@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tubuh Mistik: Puzzle Pelayanan Misdinar</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti Library -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Google Fonts & Lucide Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Cinzel:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gold: {
+              400: '#FBBF24',
+              500: '#F59E0B',
+              600: '#D97706',
+              700: '#B45309',
+            },
+            navy: {
+              800: '#0F172A',
+              900: '#0B1120',
+              950: '#05070E',
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            cinzel: ['Cinzel', 'serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      touch-action: manipulation;
+      background-color: #05070E;
+      color: #F8FAFC;
+    }
+    .grid-board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 4px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 3px solid rgba(245, 158, 11, 0.5);
+      border-radius: 1rem;
+      padding: 4px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(245, 158, 11, 0.1);
+    }
+    .puzzle-tile {
+      aspect-ratio: 1 / 1;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s ease;
+      background-size: 300% 300%;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .puzzle-tile:active {
+      transform: scale(0.95);
+    }
+    .tile-selected {
+      border: 3px solid #F59E0B !important;
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.8);
+      transform: scale(0.98);
+      z-index: 10;
+    }
+    .tile-missing {
+      background: rgba(15, 23, 42, 0.7) !important;
+      border: 2px dashed rgba(245, 158, 11, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .gold-gradient-text {
+      background: linear-gradient(135deg, #FDE68A 0%, #F59E0B 50%, #D97706 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .gold-button {
+      background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    }
+    .gold-button:active {
+      transform: translateY(1px);
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.05); }
+    }
+    .glow-bg {
+      animation: pulseGlow 4s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between items-center relative overflow-x-hidden font-sans select-none">
+
+  <!-- Ambient Glow Background -->
+  <div class="fixed top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none glow-bg"></div>
+  <div class="fixed bottom-10 left-1/2 -translate-x-1/2 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+  <!-- Header / Navbar -->
+  <header class="w-full max-w-md px-5 pt-4 pb-2 flex items-center justify-between z-10">
+    <div class="flex items-center space-x-2">
+      <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+        <i data-lucide="cross" class="w-4 h-4"></i>
+      </div>
+      <div>
+        <h1 class="font-cinzel font-bold text-xs tracking-wider text-amber-400/90 uppercase">Rekoleksi Misdinar</h1>
+        <p class="text-[10px] text-slate-400 font-medium">OMK & Putra-Putri Altar</p>
+      </div>
+    </div>
+    <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-amber-300 flex items-center gap-1">
+      <i data-lucide="users" class="w-3 h-3"></i> 100 Pelayan
+    </span>
+  </header>
+
+  <!-- Main Container -->
+  <main class="w-full max-w-md px-4 py-2 flex-1 flex flex-col justify-center items-center z-10">
+
+    <!-- SCREEN 1: WELCOME SCREEN -->
+    <div id="screen-welcome" class="w-full flex flex-col items-center text-center space-y-6 py-4">
+      <div class="relative">
+        <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-amber-500/20 to-navy-800 border border-amber-500/30 flex items-center justify-center shadow-2xl relative z-10">
+          <i data-lucide="puzzle" class="w-12 h-12 text-amber-400"></i>
+        </div>
+        <div class="absolute -inset-2 bg-amber-500/20 rounded-3xl blur-md -z-0"></div>
+      </div>
+
+      <div class="space-y-2">
+        <h2 class="font-cinzel text-2xl font-bold gold-gradient-text tracking-wide">TUBUH MISTIK</h2>
+        <p class="text-xs text-slate-300 font-medium max-w-xs mx-auto leading-relaxed">
+          "Satu Tubuh, Banyak Anggota"
+          <br><span class="text-amber-400/80 font-semibold">(1 Korintus 12:12-27)</span>
+        </p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 w-full text-left space-y-3 border border-amber-500/20">
+        <div class="flex items-start space-x-3">
+          <div class="p-2 bg-amber-500/10 rounded-lg text-amber-400 shrink-0 mt-0.5">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-slate-200">Misi Kamu Hari Ini:</h4>
+            <p class="text-[11px] text-slate-400 mt-0.5 leading-normal">
+              Susun gambar Altar dan Perayaan Ekaristi ini sampai utuh bersama 99 teman misdinar lainnya!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-start" onclick="startGame()" class="w-full gold-button py-3.5 px-6 rounded-xl font-bold text-slate-950 text-sm flex items-center justify-center space-x-2 hover:brightness-110 transition-all">
+        <span>Mulai Susun Puzzle</span>
+        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- SCREEN 2: GAMEPLAY SCREEN -->
+    <div id="screen-game" class="w-full flex flex-col items-center space-y-4 hidden">
+      <!-- Status & Instructions -->
+      <div class="w-full flex items-center justify-between text-xs px-1">
+        <span class="text-slate-400 font-medium flex items-center gap-1.5">
+          <i data-lucide="touch-interaction" class="w-3.5 h-3.5 text-amber-400"></i>
+          Ketuk 2 kepingan untuk menukar
+        </span>
+        <span id="move-counter" class="text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+          Langkah: 0
+        </span>
+      </div>
+
+      <!-- Puzzle Canvas Container -->
+      <div class="w-full relative">
+        <div id="puzzle-board" class="grid-board w-full"></div>
+      </div>
+
+      <!-- Helper info / Trigger button -->
+      <div class="w-full space-y-2 pt-1">
+        <button id="btn-reveal-trigger" onclick="openReflectionModal()" class="w-full glass-card border-amber-500/40 py-3 px-4 rounded-xl text-amber-300 font-semibold text-xs flex items-center justify-center space-x-2 hover:bg-amber-500/10 transition-all">
+          <i data-lucide="help-circle" class="w-4 h-4 text-amber-400 animate-bounce"></i>
+          <span>Kenapa Puzzlenya Gak BIsa Lengkap?</span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer Credit -->
+  <footer class="w-full text-center py-3 text-[10px] text-slate-500 font-medium z-10 border-t border-slate-900">
+    Rekoleksi Putra-Putri Altar & OMK &bull; <span class="text-amber-500/80">Serviam in Caritate</span>
+  </footer>
+
+  <!-- MODAL 1: PERMENUNGAN / REFLECTION POPUP -->
+  <div id="modal-reflection" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity duration-300">
+    <div class="glass-card border-amber-500/30 rounded-2xl p-5 w-full max-w-sm space-y-4 text-center transform scale-95 transition-transform duration-300" id="reflection-card">
+      
+      <div class="w-12 h-12 bg-amber-500/20 border border-amber-500/40 rounded-full flex items-center justify-center mx-auto text-amber-400">
+        <i data-lucide="heart-handshake" class="w-6 h-6"></i>
+      </div>
+
+      <div class="space-y-1">
+        <h3 class="font-cinzel font-bold text-amber-400 text-lg">Bagian yang Hilang Adalah Kamu!</h3>
+        <p class="text-[11px] text-slate-400 uppercase tracking-widest font-semibold">Permenungan Misdinar</p>
+      </div>
+
+      <div class="text-xs text-slate-200 leading-relaxed space-y-3 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 text-left">
+        <p>
+          Kamu merasa ada kepingan puzzle yang <span class="text-amber-400 font-semibold">kosong dan hilang</span> di layar HP kamu?
+        </p>
+        <p class="text-slate-300">
+          Sama seperti puzzle ini: <strong class="text-amber-300">Gereja dan Pelayanan Altar tanpa keterlibatanmu akan selalu terasa tidak utuh!</strong> Ada bagian penting yang kosong jika kamu memilih pasif atau mundur.
+        </p>
+        <blockquote class="italic border-l-2 border-amber-500 pl-2 text-[11px] text-amber-200/90 font-serif">
+          "Kamu adalah Tubuh Kristus dan kamu masing-masing adalah anggotanya."
+          <div class="font-sans text-[10px] text-slate-400 not-italic font-semibold mt-0.5">(1 Korintus 12:27)</div>
+        </blockquote>
+      </div>
+
+      <!-- Action: Input Nama untuk Melengkapi -->
+      <div class="space-y-2 pt-1 text-left">
+        <label for="user-name" class="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
+          <span>Tulis Nama / Inisial Kamu:</span>
+          <span class="text-[9px] text-amber-400 font-normal">*Tanda Kesediaan Melayani</span>
+        </label>
+        <input type="text" id="user-name" placeholder="Contoh: Michael / OMK Paroki" maxlength="20" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-amber-300 placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors">
+      </div>
+
+      <button onclick="completePuzzleWithUser()" class="w-full gold-button py-3 px-4 rounded-xl font-bold text-slate-950 text-xs flex items-center justify-center space-x-2">
+        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+        <span>Hadir & Lengkapi Pelayanan!</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL 2: SELESAI & SELEBRASI -->
+  <div id="modal-celebration" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity duration-300">
+    <div class="glass-card border-amber-500/50 rounded-2xl p-6 w-full max-w-sm space-y-5 text-center">
+      
+      <div class="w-16 h-16 bg-gradient-to-tr from-amber-500 to-amber-300 rounded-full flex items-center justify-center mx-auto text-slate-950 shadow-lg shadow-amber-500/30 animate-pulse">
+        <i data-lucide="award" class="w-8 h-8"></i>
+      </div>
+
+      <div class="space-y-1">
+        <h3 class="font-cinzel font-bold text-amber-400 text-xl">PUZZLE LENGKAP!</h3>
+        <p id="greeting-text" class="text-xs text-amber-200 font-semibold">Terima kasih, [Nama]!</p>
+      </div>
+
+      <div class="p-4 bg-slate-900/90 rounded-xl border border-amber-500/30 text-xs text-slate-200 space-y-2">
+        <p class="leading-relaxed">
+          Kini Altar dan Perayaan Ekaristi menjadi <span class="text-amber-400 font-bold">UTUH</span> karena kesediaanmu untuk terlibat dan melayani.
+        </p>
+        <div class="pt-2 border-t border-slate-800 text-[11px] text-amber-300/90 font-medium">
+          "Mari bersama 100 temanmu lainnya, jadilah terang benderang di Altar dan di dunia!"
+        </div>
+      </div>
+
+      <button onclick="resetGame()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 px-4 rounded-xl font-semibold text-xs border border-slate-700 transition-colors">
+        Tampilkan Puzzle Lengkap Saya
+      </button>
+    </div>
+  </div>
+
+  <!-- SCRIPT UTAMA GAME -->
+  <script>
+    // Asset Gambar Altar / Ekaristi (Base64 Canvas / SVG Generator untuk jaminan 100% loaded tanpa error external URL)
+    function generateSacredImage() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 600;
+      canvas.height = 600;
+      const ctx = canvas.getContext('2d');
+
+      // Gradient Background (Gereja / Light beam)
+      const bgGrad = ctx.createRadialGradient(300, 200, 20, 300, 300, 400);
+      bgGrad.addColorStop(0, '#381E0B');
+      bgGrad.addColorStop(0.5, '#1E1B18');
+      bgGrad.addColorStop(1, '#0B0D13');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, 600, 600);
+
+      // Light Rays from Monstrance/Hostia
+      ctx.save();
+      ctx.translate(300, 220);
+      for (let i = 0; i < 16; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, 350, (i * Math.PI / 8) - 0.1, (i * Math.PI / 8) + 0.1);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.08)';
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Altar Table
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(50, 420, 500, 180);
+
+      // Altar Cloth (Kain Altar Putih & Emas)
+      ctx.fillStyle = '#F8FAFC';
+      ctx.fillRect(60, 420, 480, 160);
+      
+      // Gold trim on cloth
+      ctx.fillStyle = '#D97706';
+      ctx.fillRect(60, 440, 480, 12);
+
+      // Chalice (Piala Emas)
+      ctx.fillStyle = '#F59E0B';
+      // Base
+      ctx.beginPath();
+      ctx.ellipse(300, 410, 45, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Stem
+      ctx.fillRect(293, 340, 14, 70);
+      // Cup
+      ctx.beginPath();
+      ctx.moveTo(260, 340);
+      ctx.quadraticCurveTo(300, 380, 340, 340);
+      ctx.lineTo(350, 280);
+      ctx.lineTo(250, 280);
+      ctx.closePath();
+      ctx.fill();
+
+      // Hostia Mahakudus (Holy Host)
+      ctx.fillStyle = '#FFFBEB';
+      ctx.shadowColor = '#F59E0B';
+      ctx.shadowBlur = 25;
+      ctx.beginPath();
+      ctx.arc(300, 220, 55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Cross inside Hostia
+      ctx.strokeStyle = '#D97706';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(300, 190); ctx.lineTo(300, 250);
+      ctx.moveTo(270, 220); ctx.lineTo(330, 220);
+      ctx.stroke();
+
+      // Candles (Lilin Altar Kiri & Kanan)
+      function drawCandle(x, y) {
+        // Candle stick
+        ctx.fillStyle = '#F8FAFC';
+        ctx.fillRect(x - 12, y, 24, 120);
+        // Flame
+        ctx.fillStyle = '#F59E0B';
+        ctx.shadowColor = '#F59E0B';
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.ellipse(x, y - 18, 8, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      drawCandle(140, 300);
+      drawCandle(460, 300);
+
+      return canvas.toDataURL();
+    }
+
+    // State Variables
+    let imageSrc = '';
+    let tiles = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let missingTileIndex = 4; // Kepingan tengah (posisi 4) sengaja dihilangkan!
+    let selectedTilePos = null;
+    let moveCount = 0;
+    let isCompleted = false;
+
+    // Element Refs
+    const boardEl = document.getElementById('puzzle-board');
+    const moveCounterEl = document.getElementById('move-counter');
+
+    // Initialize App
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      imageSrc = generateSacredImage();
+    });
+
+    function startGame() {
+      document.getElementById('screen-welcome').classList.add('hidden');
+      document.getElementById('screen-game').classList.remove('hidden');
+      
+      // Shuffle tiles (tanpa posisi missing tile)
+      shuffleTiles();
+      renderBoard();
+    }
+
+    function shuffleTiles() {
+      // Acak urutan index 0-8 tapi biarkan kepingan 4 tetap jadi slot "missing"
+      let validIndices = [0, 1, 2, 3, 5, 6, 7, 8];
+      for (let i = validIndices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [validIndices[i], validIndices[j]] = [validIndices[j], validIndices[i]];
+      }
+      
+      // Masukkan kembali dengan index 4 sebagai missing (-1)
+      tiles = [];
+      let idx = 0;
+      for(let i = 0; i < 9; i++) {
+        if(i === missingTileIndex) {
+          tiles.push(-1); // -1 melambangkan slot kosong / bagian hilang
+        } else {
+          tiles.push(validIndices[idx++]);
+        }
+      }
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = '';
+      
+      tiles.forEach((tileId, currentPos) => {
+        const tileDiv = document.createElement('div');
+        tileDiv.className = 'puzzle-tile relative overflow-hidden';
+        
+        if (tileId === -1) {
+          // Slot Kepingan Hilang
+          tileDiv.classList.add('tile-missing');
+          tileDiv.innerHTML = `
+            <div class="text-center p-1">
+              <i data-lucide="help-circle" class="w-6 h-6 text-amber-500/60 mx-auto animate-pulse"></i>
+              <span class="text-[9px] font-bold text-amber-400/70 uppercase block mt-1">HILANG</span>
+            </div>
+          `;
+        } else {
+          // Kepingan Biasa
+          tileDiv.style.backgroundImage = `url(${imageSrc})`;
+          
+          // Hitung koordinat background image untuk grid 3x3
+          const origRow = Math.floor(tileId / 3);
+          const origCol = tileId % 3;
+          tileDiv.style.backgroundPosition = `${origCol * 50}% ${origRow * 50}%`;
+
+          if (selectedTilePos === currentPos) {
+            tileDiv.classList.add('tile-selected');
+          }
+
+          tileDiv.addEventListener('click', () => handleTileClick(currentPos));
+        }
+
+        boardEl.appendChild(tileDiv);
+      });
+
+      lucide.createIcons();
+    }
+
+    function handleTileClick(pos) {
+      if (isCompleted || tiles[pos] === -1) return;
+
+      if (selectedTilePos === null) {
+        // Pilih kepingan pertama
+        selectedTilePos = pos;
+      } else if (selectedTilePos === pos) {
+        // Batal pilih
+        selectedTilePos = null;
+      } else {
+        // Tukar posisi 2 kepingan
+        [tiles[selectedTilePos], tiles[pos]] = [tiles[pos], tiles[selectedTilePos]];
+        selectedTilePos = null;
+        moveCount++;
+        moveCounterEl.innerText = `Langkah: ${moveCount}`;
+      }
+
+      renderBoard();
+    }
+
+    function openReflectionModal() {
+      const modal = document.getElementById('modal-reflection');
+      const card = document.getElementById('reflection-card');
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        card.classList.remove('scale-95');
+      }, 10);
+    }
+
+    function completePuzzleWithUser() {
+      const nameInput = document.getElementById('user-name').value.trim();
+      const userName = nameInput || 'Pelayan Altar';
+
+      // Tutup Modal Permenungan
+      const modalReflect = document.getElementById('modal-reflection');
+      modalReflect.classList.add('opacity-0');
+      setTimeout(() => modalReflect.classList.add('hidden'), 300);
+
+      // Isi kepingan yang hilang dengan kepingan asli (4)
+      tiles[missingTileIndex] = missingTileIndex;
+      isCompleted = true;
+      renderBoard();
+
+      // Efek visual locking kepingan terakhir
+      const missingTileEl = boardEl.children[missingTileIndex];
+      missingTileEl.classList.remove('tile-missing');
+      missingTileEl.style.backgroundImage = `url(${imageSrc})`;
+      missingTileEl.style.backgroundPosition = `50% 50%`;
+      missingTileEl.style.border = '2px solid #F59E0B';
+      missingTileEl.style.boxShadow = '0 0 20px rgba(245, 158, 11, 0.9)';
+
+      // Trigger Confetti Efek
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#F59E0B', '#FBBF24', '#F8FAFC', '#3B82F6']
+      });
+
+      // Buka Modal Selebrasi
+      setTimeout(() => {
+        document.getElementById('greeting-text').innerText = `Terima kasih, ${userName}!`;
+        const modalCeleb = document.getElementById('modal-celebration');
+        modalCeleb.classList.remove('hidden');
+        setTimeout(() => modalCeleb.classList.remove('opacity-0'), 10);
+      }, 1000);
+    }
+
+    function resetGame() {
+      const modalCeleb = document.getElementById('modal-celebration');
+      modalCeleb.classList.add('opacity-0');
+      setTimeout(() => modalCeleb.classList.add('hidden'), 300);
+    }
+  </script>
+</body>
+</html>
